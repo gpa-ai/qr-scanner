@@ -1,1 +1,1 @@
-New Test New Again
+New Test to show log
