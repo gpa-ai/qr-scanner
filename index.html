@@ -56,13 +56,13 @@
                 await navigator.mediaDevices.getUserMedia({ video: true });
                 return true;
             } catch (error) {
-                console.error("Erreur de permissions caméra:", error);
                 return false;
             }
         }
 
         async function initializeScanner() {
             messageElement.innerText = ""; 
+
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 messageElement.innerText = "Votre navigateur ne supporte pas l'accès à la caméra.";
                 return;
@@ -81,12 +81,11 @@
                 .then(stream => {
                     videoElement.srcObject = stream;
                     videoElement.play();
-                    messageElement.innerText = ""; 
+                    messageElement.innerText = "Scanner prêt. Scannez un QR code."; 
                     startScanning(stream);
                 })
                 .catch(error => {
                     messageElement.innerText = "Erreur d'accès à la caméra. Veuillez vérifier les permissions dans les réglages de votre appareil.";
-                    console.error("Erreur d'accès caméra:", error);
                 });
         }
 
