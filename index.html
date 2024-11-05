@@ -49,8 +49,11 @@
         const startButton = document.getElementById('start-button');
         const messageElement = document.getElementById('message');
         const videoElement = document.getElementById('preview');
+        const apiUrl = "https://script.google.com/macros/s/AKfycbxTVggQpTdWxF_lsoCwjhW2UZPyngN2JakJHQLDUL2XYUxnREzUONPTAMKFxlTqniTnGQ/exec"; // URL de l'API Google Apps Script
 
         startButton.addEventListener('click', () => {
+            messageElement.innerText = ""; // Efface le message d'erreur
+
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 messageElement.innerText = "Votre navigateur ne supporte pas l'accès à la caméra.";
                 return;
@@ -63,8 +66,8 @@
                 .then(stream => {
                     videoElement.srcObject = stream;
                     videoElement.play();
-                    messageElement.innerText = ""; // Clear any message if the camera is activated
-                    startScanning();
+                    messageElement.innerText = ""; // Efface le message une fois la caméra activée
+                    startScanning(stream); // Passe le flux de la caméra pour gestion
                 })
                 .catch(error => {
                     messageElement.innerText = "Erreur d'accès à la caméra. Veuillez vérifier les permissions.";
@@ -72,7 +75,7 @@
                 });
         });
 
-        function startScanning() {
+        function startScanning(stream) {
             const html5QrCode = new Html5Qrcode("preview");
 
             html5QrCode.start(
@@ -84,17 +87,47 @@
                 qrCodeMessage => {
                     messageElement.style.color = "green";
                     messageElement.innerText = `QR Code détecté : ${qrCodeMessage}`;
-                    html5QrCode.stop();
-                    videoElement.srcObject.getTracks().forEach(track => track.stop()); // Arrêter la caméra
-                    startButton.style.display = "block"; // Réafficher le bouton pour un nouveau scan
+                    
+                    // Envoi des données à Google Sheets
+                    sendToGoogleSheets(qrCodeMessage);
+
+                    // Réinitialiser pour scanner un autre QR code
+                    setTimeout(() => {
+                        messageElement.innerText = ""; // Réinitialise le message
+                    }, 3000); // Affiche le message détecté 3 secondes
                 },
                 errorMessage => {
-                    // Erreurs d'analyse du QR code (affichées en gris pour ne pas perturber l'utilisateur)
                     console.warn(`Erreur de lecture du QR code: ${errorMessage}`);
                 }
             ).catch(err => {
                 messageElement.innerText = "Erreur lors de l'initialisation du scanner.";
                 console.error("Erreur d'initialisation du scanner:", err);
+            });
+
+            startButton.onclick = () => {
+                html5QrCode.stop();
+                stream.getTracks().forEach(track => track.stop()); // Arrête la caméra
+                startButton.style.display = "block"; // Réaffiche le bouton pour un autre scan
+            };
+        }
+
+        function sendToGoogleSheets(data) {
+            fetch(apiUrl, {
+                method: "POST",
+                mode: "no-cors", // Permet d'éviter les erreurs de CORS
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ data: data })
+            })
+            .then(response => {
+                messageElement.style.color = "blue";
+                messageElement.innerText = "Données envoyées avec succès !";
+            })
+            .catch(error => {
+                messageElement.style.color = "red";
+                messageElement.innerText = "Erreur lors de l'envoi des données.";
+                console.error("Erreur d'envoi à Google Sheets:", error);
             });
         }
     </script>
