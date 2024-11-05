@@ -49,28 +49,38 @@
         const startButton = document.getElementById('start-button');
         const messageElement = document.getElementById('message');
         const videoElement = document.getElementById('preview');
-        const apiUrl = "https://script.google.com/macros/s/AKfycbxTVggQpTdWxF_lsoCwjhW2UZPyngN2JakJHQLDUL2XYUxnREzUONPTAMKFxlTqniTnGQ/exec"; // URL de l'API Google Apps Script
+        const apiUrl = "https://script.google.com/macros/s/AKfycbxTVggQpTdWxF_lsoCwjhW2UZPyngN2JakJHQLDUL2XYUxnREzUONPTAMKFxlTqniTnGQ/exec";
 
-        startButton.addEventListener('click', () => {
+        startButton.addEventListener('click', async () => {
             messageElement.innerText = ""; // Efface le message d'erreur
+            messageElement.style.color = "red";
+
+            // Vérifie les permissions de la caméra
+            try {
+                await navigator.mediaDevices.getUserMedia({ video: true });
+            } catch (error) {
+                messageElement.innerText = "Erreur : accès à la caméra refusé. Vérifiez les permissions.";
+                console.error("Erreur d'accès caméra:", error);
+                return;
+            }
 
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 messageElement.innerText = "Votre navigateur ne supporte pas l'accès à la caméra.";
                 return;
             }
             
-            startButton.style.display = "none"; // Masquer le bouton une fois le scanner lancé
+            startButton.style.display = "none";
             messageElement.innerText = "Activation du scanner...";
 
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
                 .then(stream => {
                     videoElement.srcObject = stream;
                     videoElement.play();
-                    messageElement.innerText = ""; // Efface le message une fois la caméra activée
-                    startScanning(stream); // Passe le flux de la caméra pour gestion
+                    messageElement.innerText = ""; 
+                    startScanning(stream); // Lance la fonction de scan
                 })
                 .catch(error => {
-                    messageElement.innerText = "Erreur d'accès à la caméra. Veuillez vérifier les permissions.";
+                    messageElement.innerText = "Erreur d'accès à la caméra. Vérifiez les permissions.";
                     console.error("Erreur d'accès caméra:", error);
                 });
         });
@@ -81,20 +91,18 @@
             html5QrCode.start(
                 { facingMode: "environment" }, 
                 {
-                    fps: 10,    // Frame per second pour l'analyse du QR code
-                    qrbox: { width: 250, height: 250 } // Taille de la zone de scan
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 }
                 },
                 qrCodeMessage => {
                     messageElement.style.color = "green";
                     messageElement.innerText = `QR Code détecté : ${qrCodeMessage}`;
                     
-                    // Envoi des données à Google Sheets
                     sendToGoogleSheets(qrCodeMessage);
 
-                    // Réinitialiser pour scanner un autre QR code
                     setTimeout(() => {
                         messageElement.innerText = ""; // Réinitialise le message
-                    }, 3000); // Affiche le message détecté 3 secondes
+                    }, 3000);
                 },
                 errorMessage => {
                     console.warn(`Erreur de lecture du QR code: ${errorMessage}`);
@@ -107,14 +115,14 @@
             startButton.onclick = () => {
                 html5QrCode.stop();
                 stream.getTracks().forEach(track => track.stop()); // Arrête la caméra
-                startButton.style.display = "block"; // Réaffiche le bouton pour un autre scan
+                startButton.style.display = "block";
             };
         }
 
         function sendToGoogleSheets(data) {
             fetch(apiUrl, {
                 method: "POST",
-                mode: "no-cors", // Permet d'éviter les erreurs de CORS
+                mode: "no-cors",
                 headers: {
                     "Content-Type": "application/json"
                 },
