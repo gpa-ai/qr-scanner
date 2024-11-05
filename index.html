@@ -5,72 +5,60 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Scanner QR Code / Code-barres</title>
   <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      margin: 0;
-    }
-    #reader {
-      width: 300px;
-      margin-top: 20px;
-    }
-  </style>
 </head>
 <body>
   <h1>Scanner QR Code / Code-barres</h1>
-  <div id="reader"></div>
+  <div id="reader" style="width: 300px; height: 300px; margin: auto;"></div>
   <p id="status"></p>
 
   <script>
-    // URL de votre Google Apps Script pour recevoir les données
-    const googleScriptURL = "https://script.google.com/macros/s/AKfycbxTVggQpTdWxF_lsoCwjhW2UZPyngN2JakJHQLDUL2XYUxnREzUONPTAMKFxlTqniTnGQ/exec";
+    const googleScriptURL = "https://script.google.com/macros/s/TON_SCRIPT_DEPLOYMENT_ID/exechttps://script.google.com/macros/s/AKfycbxTVggQpTdWxF_lsoCwjhW2UZPyngN2JakJHQLDUL2XYUxnREzUONPTAMKFxlTqniTnGQ/exec";
 
     function onScanSuccess(decodedText, decodedResult) {
-      // Affiche le texte décodé pour vérification
-      document.getElementById("status").innerText = `Scanné avec succès : ${decodedText}`;
+      document.getElementById("status").innerText = "Données scannées : " + decodedText;
+      
+      // Création de l'objet FormData pour envoyer les données
+      const formData = new FormData();
+      formData.append("data", decodedText);
 
-      // Nettoie les données en supprimant les lignes vides
-      const cleanedData = decodedText.trim().replace(/\n\s*\n/g, '\n');
-
-      // Divise les données par lignes en supposant que chaque ligne représente un champ
-      const [nom, prenom, societe, fonction, telephone] = cleanedData.split("\n");
-
-      // Prépare les données pour l'envoi
-      const row = [nom, prenom, societe, fonction, telephone];
-
-      // Envoie les données au Google Sheet via Google Apps Script
+      // Envoi des données au Google Apps Script
       fetch(googleScriptURL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(row),
+        method: "POST",
+        body: formData
       })
-      .then(() => {
-          document.getElementById("status").innerText = "Données envoyées avec succès à Google Sheets!";
+      .then(response => response.text())
+      .then(responseText => {
+        document.getElementById("status").innerText = "Données envoyées avec succès !";
       })
-      .catch((error) => {
-          console.error("Erreur lors de l'envoi des données :", error);
-          document.getElementById("status").innerText = "Erreur lors de l'envoi des données.";
+      .catch(error => {
+        console.error("Erreur lors de l'envoi des données :", error);
+        document.getElementById("status").innerText = "Erreur lors de l'envoi des données.";
       });
     }
 
     function onScanFailure(error) {
-      // Gestion de l'erreur de scan (facultatif)
-      console.warn(`Erreur de scan : ${error}`);
+      // Ignorer les erreurs d'échec pour éviter les logs excessifs.
+      console.warn(`Scan échoué: ${error}`);
     }
 
-    // Initialise le scanner HTML5 QR Code
-    let html5QrcodeScanner = new Html5QrcodeScanner(
-      "reader", 
-      { fps: 10, qrbox: 250 },
-      /* verbose= */ false
-    );
-    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+    function startScanner() {
+      const html5QrcodeScanner = new Html5Qrcode("reader");
+      html5QrcodeScanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 }
+        },
+        onScanSuccess,
+        onScanFailure
+      ).catch(err => {
+        console.error("Erreur de démarrage du scanner :", err);
+        document.getElementById("status").innerText = "Impossible d'accéder à la caméra.";
+      });
+    }
+
+    // Démarre le scanner une fois la page chargée
+    window.addEventListener("load", startScanner);
   </script>
 </body>
 </html>
