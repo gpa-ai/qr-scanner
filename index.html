@@ -1,70 +1,102 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Scanner QR Code / Code-barres</title>
-  <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
-  <style>
-    body {
-      text-align: center;
-      font-family: Arial, sans-serif;
-    }
-    #reader {
-      width: 300px;
-      height: 300px;
-      margin: 20px auto;
-      display: none;
-    }
-    #status {
-      margin-top: 10px;
-      color: red;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner QR Code / Code-barres</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f7f7f7;
+        }
+        h1 {
+            color: #333;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        #message {
+            margin-top: 15px;
+            font-size: 16px;
+            color: red;
+        }
+        video {
+            width: 100%;
+            max-width: 400px;
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+    </style>
 </head>
 <body>
-  <h1>Scanner QR Code / Code-barres</h1>
-  <button onclick="startScanner()">Démarrer le scanner</button>
-  <div id="reader"></div>
-  <p id="status"></p>
+    <h1>Scanner QR Code / Code-barres</h1>
+    <button id="start-button">Démarrer le scanner</button>
+    <div id="message"></div>
+    <video id="preview" playsinline></video>
 
-  <script>
-    function onScanSuccess(decodedText, decodedResult) {
-      document.getElementById("status").innerText = "Données scannées : " + decodedText;
-    }
+    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+    <script>
+        const startButton = document.getElementById('start-button');
+        const messageElement = document.getElementById('message');
+        const videoElement = document.getElementById('preview');
 
-    function onScanFailure(error) {
-      console.warn(`Échec du scan : ${error}`);
-      document.getElementById("status").innerText = "Échec du scan. Essayez de nouveau.";
-    }
+        startButton.addEventListener('click', () => {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                messageElement.innerText = "Votre navigateur ne supporte pas l'accès à la caméra.";
+                return;
+            }
+            
+            startButton.style.display = "none"; // Masquer le bouton une fois le scanner lancé
+            messageElement.innerText = "Activation du scanner...";
 
-    function startScanner() {
-      document.getElementById("status").innerText = "Activation du scanner...";
-      
-      // Vérification des permissions de caméra
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        document.getElementById("status").innerText = "Votre navigateur ne supporte pas l'accès à la caméra.";
-        return;
-      }
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+                .then(stream => {
+                    videoElement.srcObject = stream;
+                    videoElement.play();
+                    messageElement.innerText = ""; // Clear any message if the camera is activated
+                    startScanning();
+                })
+                .catch(error => {
+                    messageElement.innerText = "Erreur d'accès à la caméra. Veuillez vérifier les permissions.";
+                    console.error("Erreur d'accès caméra:", error);
+                });
+        });
 
-      document.getElementById("reader").style.display = "block"; // Afficher le lecteur
+        function startScanning() {
+            const html5QrCode = new Html5Qrcode("preview");
 
-      const html5QrcodeScanner = new Html5Qrcode("reader");
-      html5QrcodeScanner.start(
-        { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 }
-        },
-        onScanSuccess,
-        onScanFailure
-      ).then(() => {
-        document.getElementById("status").innerText = "Scanner prêt. Pointez vers un QR code.";
-      }).catch(err => {
-        console.error("Erreur de démarrage du scanner :", err);
-        document.getElementById("status").innerText = "Erreur : Impossible d'accéder à la caméra. Vérifiez les permissions.";
-      });
-    }
-  </script>
+            html5QrCode.start(
+                { facingMode: "environment" }, 
+                {
+                    fps: 10,    // Frame per second pour l'analyse du QR code
+                    qrbox: { width: 250, height: 250 } // Taille de la zone de scan
+                },
+                qrCodeMessage => {
+                    messageElement.style.color = "green";
+                    messageElement.innerText = `QR Code détecté : ${qrCodeMessage}`;
+                    html5QrCode.stop();
+                    videoElement.srcObject.getTracks().forEach(track => track.stop()); // Arrêter la caméra
+                    startButton.style.display = "block"; // Réafficher le bouton pour un nouveau scan
+                },
+                errorMessage => {
+                    // Erreurs d'analyse du QR code (affichées en gris pour ne pas perturber l'utilisateur)
+                    console.warn(`Erreur de lecture du QR code: ${errorMessage}`);
+                }
+            ).catch(err => {
+                messageElement.innerText = "Erreur lors de l'initialisation du scanner.";
+                console.error("Erreur d'initialisation du scanner:", err);
+            });
+        }
+    </script>
 </body>
 </html>
