@@ -49,26 +49,31 @@
         const startButton = document.getElementById('start-button');
         const messageElement = document.getElementById('message');
         const videoElement = document.getElementById('preview');
-        const apiUrl = "https://script.google.com/macros/s/AKfycbxTVggQpTdWxF_lsoCwjhW2UZPyngN2JakJHQLDUL2XYUxnREzUONPTAMKFxlTqniTnGQ/exec";
+        const apiUrl = "https://script.google.com/macros/s/TON_SCRIPT_DEPLOYMENT_ID/exec";
 
-        startButton.addEventListener('click', async () => {
-            messageElement.innerText = ""; // Efface le message d'erreur
-            messageElement.style.color = "red";
-
-            // Vérifie les permissions de la caméra
+        async function checkCameraPermissions() {
             try {
                 await navigator.mediaDevices.getUserMedia({ video: true });
+                return true;
             } catch (error) {
-                messageElement.innerText = "Erreur : accès à la caméra refusé. Vérifiez les permissions.";
-                console.error("Erreur d'accès caméra:", error);
-                return;
+                console.error("Erreur de permissions caméra:", error);
+                return false;
             }
+        }
 
+        async function initializeScanner() {
+            messageElement.innerText = ""; 
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 messageElement.innerText = "Votre navigateur ne supporte pas l'accès à la caméra.";
                 return;
             }
-            
+
+            const hasPermissions = await checkCameraPermissions();
+            if (!hasPermissions) {
+                messageElement.innerText = "Erreur : accès à la caméra refusé. Vérifiez les permissions dans les réglages de votre appareil.";
+                return;
+            }
+
             startButton.style.display = "none";
             messageElement.innerText = "Activation du scanner...";
 
@@ -77,19 +82,19 @@
                     videoElement.srcObject = stream;
                     videoElement.play();
                     messageElement.innerText = ""; 
-                    startScanning(stream); // Lance la fonction de scan
+                    startScanning(stream);
                 })
                 .catch(error => {
-                    messageElement.innerText = "Erreur d'accès à la caméra. Vérifiez les permissions.";
+                    messageElement.innerText = "Erreur d'accès à la caméra. Veuillez vérifier les permissions dans les réglages de votre appareil.";
                     console.error("Erreur d'accès caméra:", error);
                 });
-        });
+        }
 
         function startScanning(stream) {
             const html5QrCode = new Html5Qrcode("preview");
 
             html5QrCode.start(
-                { facingMode: "environment" }, 
+                { facingMode: "environment" },
                 {
                     fps: 10,
                     qrbox: { width: 250, height: 250 }
@@ -101,7 +106,7 @@
                     sendToGoogleSheets(qrCodeMessage);
 
                     setTimeout(() => {
-                        messageElement.innerText = ""; // Réinitialise le message
+                        messageElement.innerText = "";
                     }, 3000);
                 },
                 errorMessage => {
@@ -114,7 +119,7 @@
 
             startButton.onclick = () => {
                 html5QrCode.stop();
-                stream.getTracks().forEach(track => track.stop()); // Arrête la caméra
+                stream.getTracks().forEach(track => track.stop());
                 startButton.style.display = "block";
             };
         }
@@ -138,6 +143,8 @@
                 console.error("Erreur d'envoi à Google Sheets:", error);
             });
         }
+
+        startButton.addEventListener('click', initializeScanner);
     </script>
 </body>
 </html>
