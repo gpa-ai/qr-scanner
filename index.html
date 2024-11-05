@@ -5,23 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Scanner QR Code / Code-barres</title>
   <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+  <style>
+    body {
+      text-align: center;
+      font-family: Arial, sans-serif;
+    }
+    #reader {
+      width: 300px;
+      height: 300px;
+      margin: 20px auto;
+      display: none; /* Masquer jusqu'à ce qu'on démarre */
+    }
+    #status {
+      margin-top: 10px;
+      color: red;
+    }
+  </style>
 </head>
 <body>
   <h1>Scanner QR Code / Code-barres</h1>
-  <div id="reader" style="width: 300px; height: 300px; margin: auto;"></div>
+  <button onclick="startScanner()">Démarrer le scanner</button>
+  <div id="reader"></div>
   <p id="status"></p>
 
   <script>
-    const googleScriptURL = "https://script.google.com/macros/s/TON_SCRIPT_DEPLOYMENT_ID/exechttps://script.google.com/macros/s/AKfycbxTVggQpTdWxF_lsoCwjhW2UZPyngN2JakJHQLDUL2XYUxnREzUONPTAMKFxlTqniTnGQ/exec";
+    const googleScriptURL = "https://script.google.com/macros/s/AKfycbxTVggQpTdWxF_lsoCwjhW2UZPyngN2JakJHQLDUL2XYUxnREzUONPTAMKFxlTqniTnGQ/exec";
 
     function onScanSuccess(decodedText, decodedResult) {
       document.getElementById("status").innerText = "Données scannées : " + decodedText;
       
-      // Création de l'objet FormData pour envoyer les données
       const formData = new FormData();
       formData.append("data", decodedText);
 
-      // Envoi des données au Google Apps Script
       fetch(googleScriptURL, {
         method: "POST",
         body: formData
@@ -37,11 +52,13 @@
     }
 
     function onScanFailure(error) {
-      // Ignorer les erreurs d'échec pour éviter les logs excessifs.
-      console.warn(`Scan échoué: ${error}`);
+      console.warn(`Échec du scan : ${error}`);
     }
 
     function startScanner() {
+      document.getElementById("reader").style.display = "block"; // Afficher le lecteur
+      document.getElementById("status").innerText = "Activation du scanner...";
+
       const html5QrcodeScanner = new Html5Qrcode("reader");
       html5QrcodeScanner.start(
         { facingMode: "environment" },
@@ -51,14 +68,13 @@
         },
         onScanSuccess,
         onScanFailure
-      ).catch(err => {
+      ).then(() => {
+        document.getElementById("status").innerText = "Scanner prêt. Pointez vers un QR code.";
+      }).catch(err => {
         console.error("Erreur de démarrage du scanner :", err);
-        document.getElementById("status").innerText = "Impossible d'accéder à la caméra.";
+        document.getElementById("status").innerText = "Impossible d'accéder à la caméra. Vérifiez les permissions.";
       });
     }
-
-    // Démarre le scanner une fois la page chargée
-    window.addEventListener("load", startScanner);
   </script>
 </body>
 </html>
