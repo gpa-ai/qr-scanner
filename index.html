@@ -29,36 +29,19 @@
   <p id="status"></p>
 
   <script>
-    const googleScriptURL = "https://script.google.com/macros/s/AKfycbxTVggQpTdWxF_lsoCwjhW2UZPyngN2JakJHQLDUL2XYUxnREzUONPTAMKFxlTqniTnGQ/exec";
-
     function onScanSuccess(decodedText, decodedResult) {
       document.getElementById("status").innerText = "Données scannées : " + decodedText;
-      
-      const formData = new FormData();
-      formData.append("data", decodedText);
-
-      fetch(googleScriptURL, {
-        method: "POST",
-        body: formData
-      })
-      .then(response => response.text())
-      .then(responseText => {
-        document.getElementById("status").innerText = "Données envoyées avec succès !";
-      })
-      .catch(error => {
-        console.error("Erreur lors de l'envoi des données :", error);
-        document.getElementById("status").innerText = "Erreur lors de l'envoi des données.";
-      });
     }
 
     function onScanFailure(error) {
       console.warn(`Échec du scan : ${error}`);
+      document.getElementById("status").innerText = "Échec du scan. Essayez de nouveau.";
     }
 
     function startScanner() {
       document.getElementById("status").innerText = "Activation du scanner...";
       
-      // Vérification si le navigateur supporte la caméra
+      // Vérification des permissions de caméra
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         document.getElementById("status").innerText = "Votre navigateur ne supporte pas l'accès à la caméra.";
         return;
